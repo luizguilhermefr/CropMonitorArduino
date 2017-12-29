@@ -58,9 +58,9 @@ char s[S + 1];
 
 char v[V + 1];
 
-char ok[STATUS] = OK
+char ok[STATUS + 1] = OK;
 
-char er[STATUS] = ER
+char er[STATUS + 1] = ER;
 
 void setup()
 {
