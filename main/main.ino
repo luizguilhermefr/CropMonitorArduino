@@ -75,7 +75,6 @@ void loop()
   if (BTSerial.available() == RESPONSE) {
     for (int i = 0; i < RESPONSE; i++){
       command[i]= BTSerial.read();
-      BTSerial.write(command[i]);
     }
     command[RESPONSE]= '\0';
     
