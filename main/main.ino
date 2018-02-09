@@ -1,16 +1,26 @@
 #include <SoftwareSerial.h>
 
-/**
-* "Protocol: 
-* OP(1) + Sensor number(2) + value (NN.DD (5))
-* Ex: 
-* R0000.00  = read sensor 00 value
-* Response: OK+05.23
-
-* W0004.35 = write the value 04.35 in the sensor 00
-* Response: OK+ or ER- if a error was encountered
+/*
+|--------------------------------------------------------------------------
+| Protocol 8 bytes
+|--------------------------------------------------------------------------
+|
+| Incoming message: [STATUS(1)][OP_ID(1)][SENSOR(2)][INTEGER(2)][DECIMAL(2)]
+| OP_IDS:           S (Sensor update), L (Lower threshold update), U (Upper threshold update)
+| STATUS:           + (Success), - (Error)
+|
+| Example:          '+S000322' --> Sensor 00 responded with success and value 03.22
+| Example:          '-S010000' --> Sensor 01 responded with error
+| Example:          '+L010100' --> Lower threshold of sensor 01 updated to 01.00 with success
+| Example:          '-U000000' --> Upper threshold of sensor 00 cannot be updated
+|
+| Outgoing message: [ANY(1)][OP_ID(1)][SENSOR(2)][INTEGER(2)][DECIMAL(2)]
+| OP_IDS:           L (Lower threshold update), U (Upper threshold update)
+|
+| Example:          ' L010050' --> Update lower threshold of sensor 01 to 00.50
+| Example:          ' U000350' --> Update upper threshold of sensor 00 to 03.50
+|
 */
-
 
 SoftwareSerial BTSerial(10, 11); // RX | TX
 
@@ -20,47 +30,35 @@ SoftwareSerial BTSerial(10, 11); // RX | TX
 
 #define PIN 13
 
-#define RESPONSE 8
+#define RESPONSE_LENGTH 8
 
-#define S 2
+#define SENSOR_LENGTH 2
 
-#define V 5
+#define INTEGER_LENGTH 2
 
-#define READ 'R'
+#define DECIMALS_LENGTH 2
 
-#define WRITE 'W'
+#define OPERATION_LENGTH 1
 
-#define WIDTH 5
+#define STATUS_LENGTH 1
 
-#define DECIMALS 2
+#define OK '+'
 
-#define STATUS 3
+#define ER '-'
 
-#define OK "OK+"
+#define OP_UPDATE_SENSOR 'S'
 
-#define ER "ER-"
+#define OP_UPDATE_LOWER_THRESHOLD 'L'
 
-float sensors[MAX_SENSOR]= {1,2,3,4};
+#define OP_UPDATE_UPPER_THRESHOLD 'U'
 
-char data;
+const char* sensors[MAX_SENSOR]= {"00","01","02","03"};
 
 char command[RESPONSE + 1];
-  
-char cmd;
-  
-int sensor;
-  
+
 float value;
-  
-char response[RESPONSE];
 
-char s[S + 1];
-
-char v[V + 1];
-
-char ok[STATUS + 1] = OK;
-
-char er[STATUS + 1] = ER;
+char response[RESPONSE_LENGTH];
 
 void setup()
 {
@@ -72,54 +70,25 @@ void setup()
 void loop()
 {
   // Keep reading from HC-05 and send to Arduino Serial Monitor
-  if (BTSerial.available() == RESPONSE) {
-    for (int i = 0; i < RESPONSE; i++){
+  if (BTSerial.available() == RESPONSE_LENGTH) {
+    for (int i = 0; i < RESPONSE_LENGTH; i++){
       command[i]= BTSerial.read();
     }
     command[RESPONSE]= '\0';
-    
-    cmd  = command[0];
+    // TODO something with incoming command
+  }
 
-    for (int i = 0; i < S; i++) {
-      s[i] = command[i + 1];
-    }
-    s[S] = '\0';
-    
-    sensor= atoi(s);
+  for (i = 0; i < MAX_SENSOR; i++) {
+    response[0] = OK;
+    response[STATUS_LENGTH] = OP_UPDATE_SENSOR;
+    response[STATUS_LENGTH  + OPERATION_LENGTH] = sensors[i];
+    value = random(0, 500) / 100;
+    dtostrf(value, INTEGER_LENGTH + DECIMALS_LENGTH + 1, DECIMALS_LENGTH, &response[STATUS_LENGTH + OPERATION_LENGTH + SENSOR_LENGTH]);
 
-    for (int i = 0; i < V; i++) {
-      v[i] = command[i + 3];
-    }
-    v[V]='\0';
-    
-    value= atof(v);
-     
-    if (cmd == READ) {
-       value = sensors[sensor];
-       dtostrf(value, WIDTH, DECIMALS, &response[STATUS]);
-
-       for (int i = 0; i < STATUS; i++) {
-        response[i] = ok[i];
-       }
-       
-       for (int j = 0; j < RESPONSE; j++){
-           BTSerial.write(response[j]);
-       }
-    } else if (cmd == WRITE){
-        if (sensor < MAX_SENSOR) {
-             sensors[sensor] = value;
-             for (int i = 0; i < STATUS; i++) {
-                response[i] = ok[i];
-             }
-        } else {
-             for (int i = 0; i < STATUS; i++) {
-                response[i] = er[i];
-             }
-        }
-        for (int j = 0; j < STATUS; j++){
-           BTSerial.write(response[j]);   
-        }
+    for (int j = 0; j < RESPONSE_LENGTH; j++){
+      BTSerial.write(response[j]);
     }
   }
+  
   delay(1000);
 }
