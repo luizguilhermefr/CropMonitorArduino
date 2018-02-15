@@ -42,7 +42,7 @@ SoftwareSerial BTSerial(10, 11); // RX | TX
 
 #define STATUS_LENGTH 1
 
-#define OK '+'
+#define OK_STATUS '+'
 
 #define ER '-'
 
@@ -54,11 +54,13 @@ SoftwareSerial BTSerial(10, 11); // RX | TX
 
 const int sensors[MAX_SENSOR]= {0,1,2,3};
 
-char sensor[SENSOR_LENGTH];
+char sensor[SENSOR_LENGTH + 1];
 
 char command[RESPONSE_LENGTH + 1];
 
 float value;
+
+char formatted_value[INTEGER_LENGTH + DECIMALS_LENGTH + 1];
 
 char response[RESPONSE_LENGTH];
 
@@ -81,16 +83,31 @@ void loop()
   }
 
   for (int i = 0; i < MAX_SENSOR; i++) {
-    response[0] = OK;
+    response[0] = OK_STATUS;
     response[STATUS_LENGTH] = OP_UPDATE_SENSOR;
-    sprintf(sensor, "%02d", sensors[i]);
+    
+    sprintf(sensor, "%02d", sensors[i]);                                                                
     for (int j = 0; j < SENSOR_LENGTH; j++) {
       response[STATUS_LENGTH + OPERATION_LENGTH + j] = sensor[j];
     }
-    value = random(0, 500) / 100;
-    dtostrf(value, INTEGER_LENGTH + DECIMALS_LENGTH + 1, DECIMALS_LENGTH, &response[STATUS_LENGTH + OPERATION_LENGTH + SENSOR_LENGTH]);
+    
+    value = random(0, 500) / 100.0;
+    dtostrf(value, INTEGER_LENGTH + DECIMALS_LENGTH + 1, DECIMALS_LENGTH, formatted_value);
+
+    for (int j = 0; j < INTEGER_LENGTH; j++) {
+      if (formatted_value[j] == ' ') {
+        response[STATUS_LENGTH + OPERATION_LENGTH + SENSOR_LENGTH + j] = '0';
+      } else {
+        response[STATUS_LENGTH + OPERATION_LENGTH + SENSOR_LENGTH + j] = formatted_value[j];
+      }
+    }
+    for (int j = 0; j < DECIMALS_LENGTH; j++) {
+       response[STATUS_LENGTH + OPERATION_LENGTH + SENSOR_LENGTH + INTEGER_LENGTH + j] = formatted_value[INTEGER_LENGTH + 1 + j];
+    }
+    
     for (int j = 0; j < RESPONSE_LENGTH; j++){
       BTSerial.write(response[j]);
+//      Serial.println(response[j]);
     }
   }
   
