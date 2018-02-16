@@ -61,7 +61,7 @@ SoftwareSerial BTSerial(10, 11); // RX | TX
 
 #define PRECISION 20
 
-#define INCOMING_COMMAND_START = 1
+#define INCOMING_COMMAND_START 1
 
 const int sensors[MAX_SENSOR]= {0,1,2,3};
 
@@ -119,7 +119,21 @@ void loop()
     for (int i = 0; i < RESPONSE_LENGTH; i++){
       command[i]= BTSerial.read();
     }
+    
     command[RESPONSE_LENGTH]= '\0';
+
+    if (command[INCOMING_COMMAND_START] == OP_REFRESH_THRESHOLDS) {
+      for (int i = 0; i < MAX_SENSOR; i++) {
+        build_response(OK_STATUS, OP_UPDATE_LOWER_THRESHOLD, i, convert_integer_to_voltage(sensors_lower_thresholds[i]));
+        for (int j = 0; j < RESPONSE_LENGTH; j++){
+          BTSerial.write(response[j]);
+        }
+        build_response(OK_STATUS, OP_UPDATE_LOWER_THRESHOLD, i, convert_integer_to_voltage(sensors_upper_thresholds[i]));
+        for (int j = 0; j < RESPONSE_LENGTH; j++){
+          BTSerial.write(response[j]);
+        }
+      }
+    }
   }
 
   for (int i = 0; i < MAX_SENSOR; i++) {
