@@ -128,7 +128,7 @@ void loop()
         for (int j = 0; j < RESPONSE_LENGTH; j++){
           BTSerial.write(response[j]);
         }
-        build_response(OK_STATUS, OP_UPDATE_LOWER_THRESHOLD, i, convert_integer_to_voltage(sensors_upper_thresholds[i]));
+        build_response(OK_STATUS, OP_UPDATE_UPPER_THRESHOLD, i, convert_integer_to_voltage(sensors_upper_thresholds[i]));
         for (int j = 0; j < RESPONSE_LENGTH; j++){
           BTSerial.write(response[j]);
         }
