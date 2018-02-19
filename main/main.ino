@@ -55,6 +55,8 @@ SoftwareSerial BTSerial(10, 11); // RX | TX
 
 #define OP_REFRESH_THRESHOLDS 'R'
 
+#define DECIMAL_SEPARATOR '.'
+
 #define MIN_VOLTAGE 0
 
 #define MAX_VOLTAGE 5
@@ -75,7 +77,7 @@ char response[RESPONSE_LENGTH];
 
 char formatted_sensor[SENSOR_LENGTH + 1];
 
-char formatted_value[INTEGER_LENGTH + DECIMALS_LENGTH + 1];
+char formatted_value[INTEGER_LENGTH + DECIMALS_LENGTH + 2];
 
 float convert_integer_to_voltage (int value) {
   return (value * MAX_VOLTAGE) / (float) PRECISION;
@@ -132,6 +134,30 @@ void loop()
         for (int j = 0; j < RESPONSE_LENGTH; j++){
           BTSerial.write(response[j]);
         }
+      }
+    } else if ((command[INCOMING_COMMAND_START] == OP_UPDATE_LOWER_THRESHOLD) || (command[INCOMING_COMMAND_START] == OP_UPDATE_LOWER_THRESHOLD)) {
+      for (int i = 0; i < SENSOR_LENGTH; i++) {
+        formatted_sensor[i] = command[INCOMING_COMMAND_START + OPERATION_LENGTH + i];
+      }
+      int sensor = atoi(formatted_sensor);
+      for (int i = 0; i < INTEGER_LENGTH; i++) {
+        formatted_value[i] = command[INCOMING_COMMAND_START + OPERATION_LENGTH + SENSOR_LENGTH + i];
+      }
+      formatted_value[INCOMING_COMMAND_START + OPERATION_LENGTH + SENSOR_LENGTH + INTEGER_LENGTH] = DECIMAL_SEPARATOR;
+      for (int i = 0; i < DECIMALS_LENGTH; i++) {
+        formatted_value[i + 1 + INTEGER_LENGTH] = command[INCOMING_COMMAND_START + OPERATION_LENGTH + SENSOR_LENGTH + INTEGER_LENGTH + i];
+      }
+      float value = atof(formatted_value);
+      if ((sensor < MAX_SENSOR) && sensor >= 0) {
+        if (command[INCOMING_COMMAND_START] == OP_UPDATE_LOWER_THRESHOLD){
+          sensors_lower_thresholds[sensor] = value;
+        } else {
+          sensors_upper_thresholds[sensor] = value;
+        }
+      }
+      build_response(OK_STATUS, command[INCOMING_COMMAND_START], sensor, value);
+      for (int j = 0; j < RESPONSE_LENGTH; j++){
+        BTSerial.write(response[j]);
       }
     }
   }
