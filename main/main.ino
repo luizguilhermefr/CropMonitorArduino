@@ -65,7 +65,7 @@ SoftwareSerial BTSerial(10, 11); // RX | TX
 
 #define INCOMING_COMMAND_START 1
 
-const int sensors[MAX_SENSOR]= {0,1,2,3};
+const int sensors[MAX_SENSOR] = {0, 1, 2, 3};
 
 char command[RESPONSE_LENGTH + 1];
 
@@ -79,95 +79,126 @@ char formatted_sensor[SENSOR_LENGTH + 1];
 
 char formatted_value[INTEGER_LENGTH + DECIMALS_LENGTH + 2];
 
-float convert_integer_to_voltage (int value) {
-  return (value * MAX_VOLTAGE) / (float) PRECISION;
+float convert_integer_to_voltage(int value)
+{
+  return (value * MAX_VOLTAGE) / (float)PRECISION;
 }
 
 void setup()
 {
-  pinMode(PIN, OUTPUT);  // this pin will pull the HC-05 pin 34 (key pin) HIGH to switch module to AT mode
+  pinMode(PIN, OUTPUT); // this pin will pull the HC-05 pin 34 (key pin) HIGH to switch module to AT mode
   Serial.begin(FREQUENCY);
-  BTSerial.begin(FREQUENCY);  // HC-05 default speed in AT command more
+  BTSerial.begin(FREQUENCY); // HC-05 default speed in AT command more
 
-  for (int i = 0; i < MAX_SENSOR; i++) { // TODO: Ler da EPROM
-    sensors_lower_thresholds[i] = convert_integer_to_voltage(random(1, 5)); 
+  for (int i = 0; i < MAX_SENSOR; i++)
+  { // TODO: Ler da EPROM
+    sensors_lower_thresholds[i] = convert_integer_to_voltage(random(1, 5));
     sensors_upper_thresholds[i] = convert_integer_to_voltage(random(15, 20));
   }
 }
 
-static void build_response (char status_code, char operation, int sensor, float value) {
+static void build_response(char status_code, char operation, int sensor, float value)
+{
   response[0] = status_code;
   response[STATUS_LENGTH] = operation;
-  sprintf(formatted_sensor, "%02d", sensor);                                                                
-  for (int i = 0; i < SENSOR_LENGTH; i++) {
+  sprintf(formatted_sensor, "%02d", sensor);
+  for (int i = 0; i < SENSOR_LENGTH; i++)
+  {
     response[STATUS_LENGTH + OPERATION_LENGTH + i] = formatted_sensor[i];
   }
   dtostrf(value, INTEGER_LENGTH + DECIMALS_LENGTH + 1, DECIMALS_LENGTH, formatted_value);
-  for (int i = 0; i < INTEGER_LENGTH; i++) {
-    if (formatted_value[i] == ' ') {
+  for (int i = 0; i < INTEGER_LENGTH; i++)
+  {
+    if (formatted_value[i] == ' ')
+    {
       response[STATUS_LENGTH + OPERATION_LENGTH + SENSOR_LENGTH + i] = '0';
-    } else {
+    }
+    else
+    {
       response[STATUS_LENGTH + OPERATION_LENGTH + SENSOR_LENGTH + i] = formatted_value[i];
     }
   }
-  for (int i = 0; i < DECIMALS_LENGTH; i++) {
-     response[STATUS_LENGTH + OPERATION_LENGTH + SENSOR_LENGTH + INTEGER_LENGTH + i] = formatted_value[INTEGER_LENGTH + 1 + i];
+  for (int i = 0; i < DECIMALS_LENGTH; i++)
+  {
+    response[STATUS_LENGTH + OPERATION_LENGTH + SENSOR_LENGTH + INTEGER_LENGTH + i] = formatted_value[INTEGER_LENGTH + 1 + i];
+  }
+}
+
+void manage_incoming_command()
+{
+  command[RESPONSE_LENGTH] = '\0';
+  if (command[INCOMING_COMMAND_START] == OP_REFRESH_THRESHOLDS)
+  {
+    for (int i = 0; i < MAX_SENSOR; i++)
+    {
+      build_response(OK_STATUS, OP_UPDATE_LOWER_THRESHOLD, i, sensors_lower_thresholds[i]);
+      for (int j = 0; j < RESPONSE_LENGTH; j++)
+      {
+        BTSerial.write(response[j]);
+      }
+      build_response(OK_STATUS, OP_UPDATE_UPPER_THRESHOLD, i, sensors_upper_thresholds[i]);
+      for (int j = 0; j < RESPONSE_LENGTH; j++)
+      {
+        BTSerial.write(response[j]);
+      }
+    }
+  }
+  else if ((command[INCOMING_COMMAND_START] == OP_UPDATE_LOWER_THRESHOLD) || (command[INCOMING_COMMAND_START] == OP_UPDATE_LOWER_THRESHOLD))
+  {
+    for (int i = 0; i < SENSOR_LENGTH; i++)
+    {
+      formatted_sensor[i] = command[INCOMING_COMMAND_START + OPERATION_LENGTH + i];
+    }
+    int sensor = atoi(formatted_sensor);
+    for (int i = 0; i < INTEGER_LENGTH; i++)
+    {
+      formatted_value[i] = command[INCOMING_COMMAND_START + OPERATION_LENGTH + SENSOR_LENGTH + i];
+    }
+    formatted_value[INCOMING_COMMAND_START + OPERATION_LENGTH + SENSOR_LENGTH + INTEGER_LENGTH] = DECIMAL_SEPARATOR;
+    for (int i = 0; i < DECIMALS_LENGTH; i++)
+    {
+      formatted_value[i + 1 + INTEGER_LENGTH] = command[INCOMING_COMMAND_START + OPERATION_LENGTH + SENSOR_LENGTH + INTEGER_LENGTH + i];
+    }
+    float value = atof(formatted_value);
+    if ((sensor < MAX_SENSOR) && sensor >= 0)
+    {
+      if (command[INCOMING_COMMAND_START] == OP_UPDATE_LOWER_THRESHOLD)
+      {
+        sensors_lower_thresholds[sensor] = value;
+      }
+      else
+      {
+        sensors_upper_thresholds[sensor] = value;
+      }
+    }
+    build_response(OK_STATUS, command[INCOMING_COMMAND_START], sensor, value);
+    for (int j = 0; j < RESPONSE_LENGTH; j++)
+    {
+      BTSerial.write(response[j]);
+    }
   }
 }
 
 void loop()
 {
-  if (BTSerial.available() == RESPONSE_LENGTH) {
-    for (int i = 0; i < RESPONSE_LENGTH; i++){
-      command[i]= BTSerial.read();
+  if (BTSerial.available() == RESPONSE_LENGTH)
+  {
+    for (int i = 0; i < RESPONSE_LENGTH; i++)
+    {
+      command[i] = BTSerial.read();
     }
-    
-    command[RESPONSE_LENGTH]= '\0';
 
-    if (command[INCOMING_COMMAND_START] == OP_REFRESH_THRESHOLDS) {
-      for (int i = 0; i < MAX_SENSOR; i++) {
-        build_response(OK_STATUS, OP_UPDATE_LOWER_THRESHOLD, i, sensors_lower_thresholds[i]);
-        for (int j = 0; j < RESPONSE_LENGTH; j++){
-          BTSerial.write(response[j]);
-        }
-        build_response(OK_STATUS, OP_UPDATE_UPPER_THRESHOLD, i, sensors_upper_thresholds[i]);
-        for (int j = 0; j < RESPONSE_LENGTH; j++){
-          BTSerial.write(response[j]);
-        }
-      }
-    } else if ((command[INCOMING_COMMAND_START] == OP_UPDATE_LOWER_THRESHOLD) || (command[INCOMING_COMMAND_START] == OP_UPDATE_LOWER_THRESHOLD)) {
-      for (int i = 0; i < SENSOR_LENGTH; i++) {
-        formatted_sensor[i] = command[INCOMING_COMMAND_START + OPERATION_LENGTH + i];
-      }
-      int sensor = atoi(formatted_sensor);
-      for (int i = 0; i < INTEGER_LENGTH; i++) {
-        formatted_value[i] = command[INCOMING_COMMAND_START + OPERATION_LENGTH + SENSOR_LENGTH + i];
-      }
-      formatted_value[INCOMING_COMMAND_START + OPERATION_LENGTH + SENSOR_LENGTH + INTEGER_LENGTH] = DECIMAL_SEPARATOR;
-      for (int i = 0; i < DECIMALS_LENGTH; i++) {
-        formatted_value[i + 1 + INTEGER_LENGTH] = command[INCOMING_COMMAND_START + OPERATION_LENGTH + SENSOR_LENGTH + INTEGER_LENGTH + i];
-      }
-      float value = atof(formatted_value);
-      if ((sensor < MAX_SENSOR) && sensor >= 0) {
-        if (command[INCOMING_COMMAND_START] == OP_UPDATE_LOWER_THRESHOLD){
-          sensors_lower_thresholds[sensor] = value;
-        } else {
-          sensors_upper_thresholds[sensor] = value;
-        }
-      }
-      build_response(OK_STATUS, command[INCOMING_COMMAND_START], sensor, value);
-      for (int j = 0; j < RESPONSE_LENGTH; j++){
-        BTSerial.write(response[j]);
-      }
-    }
+    manage_incoming_command();
   }
 
-  for (int i = 0; i < MAX_SENSOR; i++) {
+  for (int i = 0; i < MAX_SENSOR; i++)
+  {
     build_response(OK_STATUS, OP_UPDATE_SENSOR, i, random(1, 500) / 100.0);
-    for (int j = 0; j < RESPONSE_LENGTH; j++){
+    for (int j = 0; j < RESPONSE_LENGTH; j++)
+    {
       BTSerial.write(response[j]);
     }
   }
-  
+
   delay(1000);
 }
