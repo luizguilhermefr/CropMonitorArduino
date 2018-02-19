@@ -67,9 +67,9 @@ const int sensors[MAX_SENSOR]= {0,1,2,3};
 
 char command[RESPONSE_LENGTH + 1];
 
-int sensors_lower_thresholds[MAX_SENSOR];
+float sensors_lower_thresholds[MAX_SENSOR];
 
-int sensors_upper_thresholds[MAX_SENSOR];
+float sensors_upper_thresholds[MAX_SENSOR];
 
 char response[RESPONSE_LENGTH];
 
@@ -78,7 +78,7 @@ char formatted_sensor[SENSOR_LENGTH + 1];
 char formatted_value[INTEGER_LENGTH + DECIMALS_LENGTH + 1];
 
 float convert_integer_to_voltage (int value) {
-  return (value * MAX_VOLTAGE) / PRECISION;
+  return (value * MAX_VOLTAGE) / (float) PRECISION;
 }
 
 void setup()
@@ -88,8 +88,8 @@ void setup()
   BTSerial.begin(FREQUENCY);  // HC-05 default speed in AT command more
 
   for (int i = 0; i < MAX_SENSOR; i++) { // TODO: Ler da EPROM
-    sensors_lower_thresholds[i] = random(1, 5); 
-    sensors_upper_thresholds[i] = random(15, 20);
+    sensors_lower_thresholds[i] = convert_integer_to_voltage(random(1, 5)); 
+    sensors_upper_thresholds[i] = convert_integer_to_voltage(random(15, 20));
   }
 }
 
@@ -124,11 +124,11 @@ void loop()
 
     if (command[INCOMING_COMMAND_START] == OP_REFRESH_THRESHOLDS) {
       for (int i = 0; i < MAX_SENSOR; i++) {
-        build_response(OK_STATUS, OP_UPDATE_LOWER_THRESHOLD, i, convert_integer_to_voltage(sensors_lower_thresholds[i]));
+        build_response(OK_STATUS, OP_UPDATE_LOWER_THRESHOLD, i, sensors_lower_thresholds[i]);
         for (int j = 0; j < RESPONSE_LENGTH; j++){
           BTSerial.write(response[j]);
         }
-        build_response(OK_STATUS, OP_UPDATE_UPPER_THRESHOLD, i, convert_integer_to_voltage(sensors_upper_thresholds[i]));
+        build_response(OK_STATUS, OP_UPDATE_UPPER_THRESHOLD, i, sensors_upper_thresholds[i]);
         for (int j = 0; j < RESPONSE_LENGTH; j++){
           BTSerial.write(response[j]);
         }
