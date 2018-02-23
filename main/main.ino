@@ -132,7 +132,6 @@ void read_command()
     command[i] = BTSerial.read();
   }
   command[RESPONSE_LENGTH] = '\0';
-  Serial.println(command);
 }
 
 int identify_sensor()
@@ -196,7 +195,7 @@ void manage_incoming_command()
 
 void loop()
 {
-  if (BTSerial.available() == RESPONSE_LENGTH)
+  if (BTSerial.available() >= RESPONSE_LENGTH)
   {
     read_command();
     manage_incoming_command();
