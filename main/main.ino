@@ -61,7 +61,7 @@ SoftwareSerial BTSerial(10, 11); // RX | TX
 
 #define MAX_VOLTAGE 5
 
-#define PRECISION 20
+#define PRECISION 50
 
 #define INCOMING_COMMAND_START 1
 
@@ -77,11 +77,6 @@ char formatted_sensor[SENSOR_LENGTH + 1];
 
 char formatted_value[INTEGER_LENGTH + DECIMALS_LENGTH + 2];
 
-float convert_integer_to_voltage(int value)
-{
-  return (value * MAX_VOLTAGE) / (float)PRECISION;
-}
-
 void setup()
 {
   pinMode(PIN, OUTPUT); // this pin will pull the HC-05 pin 34 (key pin) HIGH to switch module to AT mode
@@ -90,8 +85,8 @@ void setup()
 
   for (int i = 0; i < MAX_SENSOR; i++)
   { // TODO: Ler da EPROM
-    sensors_lower_thresholds[i] = convert_integer_to_voltage(random(1, 5));
-    sensors_upper_thresholds[i] = convert_integer_to_voltage(random(15, 20));
+    sensors_lower_thresholds[i] = (random(05, 15) * MAX_VOLTAGE) / (float) PRECISION;
+    sensors_upper_thresholds[i] = (random(40, 50) * MAX_VOLTAGE) / (float) PRECISION;
   }
 }
 
@@ -137,21 +132,23 @@ void read_command()
     command[i] = BTSerial.read();
   }
   command[RESPONSE_LENGTH] = '\0';
+  Serial.println(command);
 }
 
 int identify_sensor()
 {
-  char sensor[SENSOR_LENGTH];
+  char sensor[SENSOR_LENGTH + 1];
   for (int i = 0; i < SENSOR_LENGTH; i++)
   {
     sensor[i] = command[INCOMING_COMMAND_START + OPERATION_LENGTH + i];
   }
+  sensor[SENSOR_LENGTH] = '\0';
   return atoi(sensor);
 }
 
 float identify_value()
 {
-  char value[INTEGER_LENGTH + DECIMALS_LENGTH + 1];
+  char value[INTEGER_LENGTH + DECIMALS_LENGTH + 2];
   for (int i = 0; i < INTEGER_LENGTH; i++)
   {
     value[i] = command[INCOMING_COMMAND_START + OPERATION_LENGTH + SENSOR_LENGTH + i];
@@ -161,6 +158,7 @@ float identify_value()
   {
     value[i + 1 + INTEGER_LENGTH] = command[INCOMING_COMMAND_START + OPERATION_LENGTH + SENSOR_LENGTH + INTEGER_LENGTH + i];
   }
+  value[INTEGER_LENGTH + DECIMALS_LENGTH + 1] = '\0';
   return atof(value);
 }
 
@@ -176,7 +174,7 @@ void manage_incoming_command()
       write_response();
     }
   }
-  else if ((command[INCOMING_COMMAND_START] == OP_UPDATE_LOWER_THRESHOLD) || (command[INCOMING_COMMAND_START] == OP_UPDATE_LOWER_THRESHOLD))
+  else if ((command[INCOMING_COMMAND_START] == OP_UPDATE_LOWER_THRESHOLD) || (command[INCOMING_COMMAND_START] == OP_UPDATE_UPPER_THRESHOLD))
   {
     int sensor = identify_sensor();
     float value = identify_value();
